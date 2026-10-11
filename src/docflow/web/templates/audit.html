@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}审计日志 · DocFlow AI{% endblock %}
+{% block content %}
+  <h1>审计日志</h1>
+  <p class="sub">记录所有改变状态的动作：处理、复核、导出，以及被拦截的越权尝试。最近 {{ limit }} 条。</p>
+
+  <div class="card">
+    {% if rows %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>操作者</th>
+              <th>角色</th>
+              <th>动作</th>
+              <th>目标</th>
+              <th>详情</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td class="mono">{{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ row.actor or '-' }}</td>
+                <td><span class="badge info">{{ row.role or '-' }}</span></td>
+                <td>
+                  {% if row.action == 'access_denied' %}
+                    <span class="badge error">{{ row.action }}</span>
+                  {% else %}
+                    <span class="badge ok">{{ row.action }}</span>
+                  {% endif %}
+                </td>
+                <td class="mono">{{ row.target or '-' }}</td>
+                <td class="muted">{{ row.detail or '-' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">暂无审计记录。</p>
+    {% endif %}
+  </div>
+{% endblock %}

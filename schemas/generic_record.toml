@@ -1,0 +1,72 @@
+name = "generic_record"
+label = "通用记录"
+description = "适用于物料清单、库存表、供应商报价单等「编号 + 名称 + 数量 + 单位 + 价格」类表格"
+primary_key = "material_id"
+
+[fields.material_id]
+label = "物料编号"
+type = "string"
+required = true
+synonyms = [
+    "物料编号", "物料编码", "物料号", "料号", "零件号", "零件编号", "编号",
+    "item no", "item_no", "itemno", "part no", "part_no", "partno", "sku", "code",
+]
+
+[fields.material_name]
+label = "物料名称"
+type = "string"
+required = true
+synonyms = [
+    "物料名称", "物料描述", "名称", "品名", "零件名称", "零件名", "产品名称",
+    "part name", "partname", "description", "name", "desc",
+]
+
+[fields.spec]
+label = "规格型号"
+type = "string"
+synonyms = ["规格", "规格型号", "型号", "规格描述", "规格及型号", "spec", "model", "specification"]
+
+[fields.material]
+label = "材料"
+type = "string"
+synonyms = ["材料", "材质", "材料牌号", "material"]
+
+[fields.quantity]
+label = "数量"
+type = "integer"
+required = true
+min_value = 0
+synonyms = ["数量", "需求量", "订购数量", "采购数量", "数量合计", "qty", "quantity", "count", "amount"]
+
+[fields.unit]
+label = "单位"
+type = "string"
+synonyms = ["单位", "计量单位", "计量", "unit", "uom"]
+
+[fields.unit_price]
+label = "单价"
+type = "float"
+min_value = 0
+synonyms = ["单价", "价格", "含税单价", "不含税单价", "报价", "unit price", "price"]
+
+[fields.supplier]
+label = "供应商"
+type = "string"
+synonyms = ["供应商", "厂商", "供货商", "供应商名称", "supplier", "vendor"]
+
+[fields.remark]
+label = "备注"
+type = "string"
+synonyms = ["备注", "说明", "备注信息", "remark", "remarks", "note", "comment"]
+
+# 同一物料编号在多个来源（如两家供应商的报价单）中出现时，这些字段取值应一致
+[[consistency]]
+key = "material_id"
+fields = ["material_name", "spec", "unit", "supplier"]
+level = "warning"
+
+# 物料编号缺失时，用「名称 + 规格 + 供应商」的相似度判断是否同一实体
+[dedupe]
+enabled = true
+fields = ["material_name", "spec", "supplier"]
+threshold = 0.9

@@ -1,0 +1,21 @@
+# 快速预览链路：跳过跨源一致性与去重，只跑「接入 → 映射 → 质检 → 分流」。
+# 适合上传后先看数据长什么样，等确认口径后再用标准链路正式处理。
+name = "fast"
+label = "快速预览链路"
+description = "接入 → 映射 → 应用 → 质检 → 分流（不做跨源一致性检查与去重扫描）"
+checkpoint = true
+
+[[steps]]
+name = "ingest"
+
+[[steps]]
+name = "map"
+
+[[steps]]
+name = "apply"
+
+[[steps]]
+name = "quality"
+
+[[steps]]
+name = "triage"

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}运行 {{ run.run_id }} · DocFlow AI{% endblock %}
+{% block content %}
+<div class="row" style="justify-content: space-between; margin-bottom: 6px;">
+  <h1>运行详情 · {{ run.schema_label or run.schema_name }}</h1>
+  <div class="row">
+    <a class="btn ghost sm" href="/runs/{{ run.run_id }}/export.xlsx">导出 Excel</a>
+    <a class="btn ghost sm" href="/">返回工作台</a>
+  </div>
+</div>
+<p class="sub mono">run_id = {{ run.run_id }} · {{ run.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+
+<div class="grid cols-4" style="margin-bottom: 20px;">
+  <div class="stat"><div class="n">{{ run.record_count }}</div><div class="l">记录总数</div></div>
+  <div class="stat"><div class="n" style="color: var(--err)">{{ run.error_count }}</div><div class="l">错误</div></div>
+  <div class="stat"><div class="n" style="color: var(--warn)">{{ run.warning_count }}</div><div class="l">警告</div></div>
+  <div class="stat"><div class="n" style="color: var(--warn)">{{ run.pending_count }}</div><div class="l">待复核</div></div>
+</div>
+
+{% if run.failures %}
+<div class="card">
+  <h2>解析失败的文件</h2>
+  {% for failure in run.failures %}
+    <div class="flash error">{{ failure.file_name }}：{{ failure.error }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if run.file_warnings %}
+<div class="card">
+  <h2>未产出数据的文件</h2>
+  <p class="sub" style="margin-bottom: 10px;">以下文件解析成功但没有任何数据表产出，未计入本次记录。</p>
+  {% for warning in run.file_warnings %}
+    <div class="flash warning">{{ warning.file_name }}：{{ warning.message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>来源与字段映射</h2>
+  {% for source in run.sources %}
+  <details>
+    <summary>
+      {{ source.label }}
+      <span class="badge {{ source.status }}">{{ source.status }}</span>
+      <span class="muted">· {{ source.record_count }} 条记录 · {{ source.review_pending }} 条待复核</span>
+    </summary>
+    <div class="table-wrap" style="margin-top: 10px;">
+      <table>
+        <thead><tr><th>源列</th><th>标准字段</th><th>置信度</th><th>方式</th></tr></thead>
+        <tbody>
+        {% for column in source.columns %}
+          <tr>
+            <td>{{ column.source_column }}</td>
+            <td>{% if column.is_mapped %}<code>{{ column.target_field }}</code>{% else %}<span class="muted">未映射</span>{% endif %}</td>
+            <td>{{ '%.2f'|format(column.confidence) }}</td>
+            <td class="muted">{{ column.method }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if source.issues %}
+      <ul class="issues" style="margin-top: 10px;">
+        {% for issue in source.issues %}
+          <li class="{{ issue.level }}">[{{ issue.level }}] {{ issue.message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </details>
+  {% endfor %}
+</div>
+
+{% if run.dedupe_groups %}
+<div class="card">
+  <h2>去重组（{{ run.dedupe_groups|length }}）</h2>
+  <p class="sub" style="margin-bottom: 12px;">
+    只报告、不自动合并：精确重复指向同一实体；模糊重复必须人工确认后才能合并。
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>实体标识</th><th>记录数</th><th>相似度</th><th>需人工确认</th><th>说明</th></tr></thead>
+      <tbody>
+      {% for group in run.dedupe_groups %}
+        <tr>
+          <td><span class="badge {{ 'warning' if group.mode == 'fuzzy' else 'info' }}">{{ '模糊' if group.mode == 'fuzzy' else '精确' }}</span></td>
+          <td>{{ group.key_value }}</td>
+          <td>{{ group.record_ids|length }}</td>
+          <td>{{ '%.2f'|format(group.similarity) }}</td>
+          <td>{% if group.review_required %}<span class="badge warning">是</span>{% else %}<span class="muted">否</span>{% endif %}</td>
+          <td class="muted">{{ group.detail }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="row" style="justify-content: space-between; margin-bottom: 14px;">
+    <h2 style="margin: 0;">记录（{{ records|length }}）</h2>
+    <div class="row">
+      <a class="btn ghost sm" href="/runs/{{ run.run_id }}">全部</a>
+      {% for status in statuses %}
+        <a class="btn ghost sm" href="/runs/{{ run.run_id }}?status={{ status }}">{{ status }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if not records %}
+    <p class="muted">没有符合条件的记录。</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>状态</th><th>置信度</th><th>来源</th><th>行号</th>
+          {% for key in field_keys %}<th>{{ key }}</th>{% endfor %}
+          <th>问题</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for record in records %}
+        <tr>
+          <td><span class="badge {{ record.review_status }}">{{ record.review_status }}</span></td>
+          <td>{{ '%.2f'|format(record.min_confidence) }}</td>
+          <td class="muted">{{ record.source_file }}{% if record.source_location %}#{{ record.source_location }}{% endif %}</td>
+          <td class="muted">{{ (record.row_index or 0) + 1 }}</td>
+          {% for key in field_keys %}
+            <td>{{ record.payload.get(key) if record.payload.get(key) is not none else '' }}</td>
+          {% endfor %}
+          <td>
+            <ul class="issues">
+              {% for issue in record.issues %}
+                <li class="{{ issue.level }}">[{{ issue.level }}] {{ issue.message }}</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td>
+            <form action="/runs/{{ run.run_id }}/records/{{ record.record_id }}/review" method="post" class="row" style="gap: 6px;">
+              <input type="hidden" name="next_url" value="/runs/{{ run.run_id }}{% if status_filter %}?status={{ status_filter }}{% endif %}">
+              <input type="text" name="reviewer" placeholder="复核人" style="width: 84px;">
+              <button class="btn ok sm" type="submit" name="action" value="approved">通过</button>
+              <button class="btn err sm" type="submit" name="action" value="rejected">驳回</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

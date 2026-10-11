@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# 运行时产物
+data/
+data_*/
+*.db
+out_*.xlsx
+ocr*.txt
+vl_out.txt
+.env
+
+# 工具缓存
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 本地专属（不公开）
+docs/面试全流程手册.md
+docs/面试叙事.md
+.trae/
+
+# 批处理运行目录
+bom_inbox/
+bom_out/

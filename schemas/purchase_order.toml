@@ -1,0 +1,109 @@
+name = "purchase_order"
+label = "采购订单"
+description = "采购订单/合同台账：含日期区间与条件必填规则，用于演示跨字段校验"
+primary_key = "order_no"
+
+[fields.order_no]
+label = "订单编号"
+type = "string"
+required = true
+pattern = "^[A-Za-z]{0,4}[-_]?\\d{4,}([-_]\\d+)?$"
+synonyms = ["订单编号", "订单号", "采购单号", "合同编号", "order no", "order_no", "po"]
+
+[fields.supplier]
+label = "供应商"
+type = "string"
+required = true
+synonyms = ["供应商", "厂商", "供货商", "供应商名称", "supplier", "vendor"]
+
+[fields.material_id]
+label = "物料编号"
+type = "string"
+required = true
+synonyms = ["物料编号", "物料编码", "料号", "物料号", "item no", "part no", "sku"]
+
+[fields.material_name]
+label = "物料名称"
+type = "string"
+required = true
+synonyms = ["物料名称", "物料描述", "名称", "品名", "part name", "description"]
+
+[fields.quantity]
+label = "数量"
+type = "integer"
+required = true
+min_value = 1
+synonyms = ["数量", "订购数量", "采购数量", "qty", "quantity"]
+
+[fields.unit_price]
+label = "单价"
+type = "float"
+required = true
+min_value = 0
+synonyms = ["单价", "含税单价", "报价", "unit price", "price"]
+
+[fields.total_amount]
+label = "总金额"
+type = "float"
+min_value = 0
+synonyms = ["总金额", "金额", "合计金额", "价税合计", "total", "amount"]
+
+[fields.order_date]
+label = "下单日期"
+type = "date"
+required = true
+synonyms = ["下单日期", "订单日期", "采购日期", "order date", "date"]
+
+[fields.delivery_date]
+label = "交付日期"
+type = "date"
+synonyms = ["交付日期", "交货日期", "要求交期", "到货日期", "delivery date", "due date"]
+
+[fields.is_urgent]
+label = "是否加急"
+type = "string"
+synonyms = ["是否加急", "加急", "紧急", "urgent"]
+
+[fields.remark]
+label = "备注"
+type = "string"
+synonyms = ["备注", "说明", "remark", "note"]
+
+# 交付日期不能早于下单日期
+[[checks]]
+type = "compare"
+level = "error"
+left = "delivery_date"
+op = ">="
+right = "order_date"
+message = "交付日期不能早于下单日期"
+
+# 加急订单必须填交付日期
+[[checks]]
+type = "require_if"
+level = "error"
+if_field = "is_urgent"
+if_value = "是"
+then_field = "delivery_date"
+message = "标记为加急的订单必须填写交付日期"
+
+# 总金额应约等于「数量 × 单价」，允许 1% 相对误差（应对小数舍入）
+[[checks]]
+type = "formula"
+level = "warning"
+target = "total_amount"
+expression = "quantity * unit_price"
+tolerance = 0.01
+message = "总金额与「数量 × 单价」不一致，请核对计价"
+
+# 同一订单在多份来源（如采购台账 + 供应商回执）中出现时，这些字段取值应一致
+[[consistency]]
+key = "order_no"
+fields = ["supplier", "material_id", "material_name", "quantity", "total_amount"]
+level = "warning"
+
+# 订单号缺失时，用「供应商 + 物料名称」的相似度判断是否同一实体
+[dedupe]
+enabled = true
+fields = ["supplier", "material_name"]
+threshold = 0.9

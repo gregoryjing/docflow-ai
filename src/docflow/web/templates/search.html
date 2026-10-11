@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}知识检索 · DocFlow AI{% endblock %}
+{% block content %}
+  <h1>知识检索</h1>
+  <p class="sub">对已建立索引的运行做跨来源统一检索（纯 Python BM25）。先运行 <code>docflow index &lt;run_id&gt;</code> 建立索引。</p>
+
+  <div class="card">
+    <form method="get" action="/search">
+      <div class="field">
+        <label for="q">检索词</label>
+        <input type="text" id="q" name="q" value="{{ q }}" placeholder="如：螺栓 华信机械 / PO-2024-001">
+        <div class="hint">支持中文词与英文/数字编号；中文按字符二元组匹配。</div>
+      </div>
+      <div class="field">
+        <label for="run_id">限定运行（可选）</label>
+        <select id="run_id" name="run_id">
+          <option value="">全部已建索引的运行</option>
+          {% for identifier in indexed_runs %}
+            <option value="{{ identifier }}" {{ 'selected' if identifier == run_id else '' }}>{{ identifier }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">已建索引：{{ indexed_runs|length }} 个。</div>
+      </div>
+      <button class="btn" type="submit">检索</button>
+    </form>
+  </div>
+
+  {% if q %}
+    <div class="card">
+      <h2>结果 · {{ hits|length }} 条</h2>
+      {% if hits %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>得分</th><th>来源</th><th>内容</th></tr>
+            </thead>
+            <tbody>
+              {% for hit in hits %}
+                <tr>
+                  <td class="mono">{{ '%.3f'|format(hit.score) }}</td>
+                  <td class="muted">{{ hit.chunk.citation() }}</td>
+                  <td>{{ hit.chunk.text.replace('\n', ' | ') }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted">没有匹配结果。{% if not indexed_runs %}当前还没有任何索引。{% endif %}</p>
+      {% endif %}
+    </div>
+    {% if not llm_configured %}
+      <div class="flash">未配置文本 LLM：网页检索仍可用；CLI 的 <code>docflow ask</code> 会退化为抽取式证据。配置 <code>DOCFLOW_LLM_BASE_URL</code> / <code>DOCFLOW_LLM_MODEL</code> 后可生成带引用的回答。</div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

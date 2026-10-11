@@ -1,0 +1,26 @@
+# 标准处理链路：全步骤开启，适合正式入库前的完整处理。
+name = "standard"
+label = "标准处理链路"
+description = "接入 → 映射 → 应用 → 质检 → 跨源一致性 → 分流 → 去重"
+checkpoint = true
+
+[[steps]]
+name = "ingest"
+
+[[steps]]
+name = "map"
+
+[[steps]]
+name = "apply"
+
+[[steps]]
+name = "quality"
+
+[[steps]]
+name = "consistency"
+
+[[steps]]
+name = "triage"
+
+[[steps]]
+name = "dedupe"
